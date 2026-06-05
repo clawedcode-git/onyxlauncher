@@ -137,3 +137,6 @@ class DragAndDropState {
 }
 
 val LocalDragAndDrop = staticCompositionLocalOf { DragAndDropState() }
+
+/** Provided from HomeScreen so any nested composable can trigger the widget picker. */
+val LocalShowWidgetPicker = staticCompositionLocalOf<() -> Unit> { {} }

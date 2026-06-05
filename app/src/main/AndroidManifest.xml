@@ -4,6 +4,10 @@
 
     <!-- Launcher core -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Required for LauncherApps.getActivityList to return all packages.
+         Launchers need this to show all installed apps in the drawer. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.BIND_APPWIDGET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

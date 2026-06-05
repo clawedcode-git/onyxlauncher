@@ -4,6 +4,7 @@ import android.app.Application
 import com.onyxlauncher.data.datastore.SettingsRepository
 import com.onyxlauncher.data.db.AppDatabase
 import com.onyxlauncher.data.`package`.PackageMonitor
+import com.onyxlauncher.data.widget.OnyxWidgetHost
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,13 @@ class OnyxLauncherApp : Application() {
     }
 
     val settingsRepository by lazy { SettingsRepository(this) }
+
+    val widgetHost by lazy { OnyxWidgetHost(this) }
+
+    override fun onCreate() {
+        super.onCreate()
+        widgetHost.startListening()
+    }
 }
 
 val Application.onyxApp get() = this as OnyxLauncherApp

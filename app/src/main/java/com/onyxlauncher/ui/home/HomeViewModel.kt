@@ -1,5 +1,6 @@
 package com.onyxlauncher.ui.home
 
+import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.LauncherApps
@@ -19,6 +20,7 @@ import com.onyxlauncher.data.db.dao.AppOverrideDao
 import com.onyxlauncher.data.db.dao.FolderDao
 import com.onyxlauncher.data.db.dao.HomeItemDao
 import com.onyxlauncher.data.db.entity.AppOverrideEntity
+import com.onyxlauncher.data.widget.OnyxWidgetHost
 import com.onyxlauncher.domain.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -79,6 +81,53 @@ class HomeViewModel(
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
+
+    // ── widget add flow ──────────────────────────────────────────────────────
+    /** Set when the user picks a provider; consumed by MainActivity to drive the
+     *  BIND_APPWIDGET → configure → placeWidget flow. Reset to null after consumption. */
+    val pendingWidgetProvider = MutableStateFlow<AppWidgetProviderInfo?>(null)
+
+    fun startWidgetAdd(info: AppWidgetProviderInfo) {
+        pendingWidgetProvider.value = info
+    }
+
+    fun placeWidget(appWidgetId: Int, page: Int, col: Int, row: Int, spanX: Int, spanY: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val item = HomeItem.WidgetRef(
+                    id = 0, page = page, gridX = col, gridY = row,
+                    appWidgetId = appWidgetId,
+                    spanX = spanX, spanY = spanY,
+                )
+                homeItemDao.insert(item.toEntity())
+            }
+        }
+    }
+
+    fun removeWidget(item: HomeItem.WidgetRef, widgetHost: OnyxWidgetHost) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                homeItemDao.deleteById(item.id)
+            }
+            widgetHost.deleteAppWidgetId(item.appWidgetId)
+        }
+    }
+
+    fun resizeWidget(item: HomeItem.WidgetRef, newSpanX: Int, newSpanY: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                homeItemDao.update(
+                    item.toEntity().copy(
+                        payload = buildString {
+                            append("{\"widgetId\":\"${item.appWidgetId}\"")
+                            append(",\"spanX\":\"$newSpanX\"")
+                            append(",\"spanY\":\"$newSpanY\"}")
+                        }
+                    )
+                )
+            }
+        }
+    }
 
     // ── overlay state ────────────────────────────────────────────────────────
     private val _contextMenu = MutableStateFlow<ContextMenuState?>(null)

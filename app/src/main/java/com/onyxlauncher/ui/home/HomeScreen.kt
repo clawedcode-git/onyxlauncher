@@ -1,5 +1,6 @@
 package com.onyxlauncher.ui.home
 
+import android.appwidget.AppWidgetManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -35,11 +36,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.onyxlauncher.domain.model.App
 import com.onyxlauncher.domain.model.Folder
+import com.onyxlauncher.domain.model.GestureAction
 import com.onyxlauncher.domain.model.HomeItem
+import com.onyxlauncher.onyxApp
 import com.onyxlauncher.ui.component.AppIcon
 import com.onyxlauncher.ui.component.PageIndicator
 import com.onyxlauncher.ui.folder.FolderIcon
 import com.onyxlauncher.ui.folder.FolderSheet
+import com.onyxlauncher.ui.widget.LocalWidgetHost
+import com.onyxlauncher.ui.widget.WidgetView
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -61,11 +66,25 @@ fun HomeScreen(
     val pagerState = rememberPagerState(pageCount = { state.pageCount })
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val widgetHost = (context.applicationContext as android.app.Application).onyxApp.widgetHost
 
     var renameTarget by remember { mutableStateOf<App?>(null) }
+    var showWidgetPicker by remember { mutableStateOf(false) }
 
-    CompositionLocalProvider(LocalDragAndDrop provides dragState) {
-        Box(modifier = modifier.fillMaxSize()) {
+    CompositionLocalProvider(
+        LocalDragAndDrop provides dragState,
+        LocalWidgetHost provides widgetHost,
+        LocalShowWidgetPicker provides { showWidgetPicker = true },
+    ) {
+        // Gesture modifier on the root Box — processes events before any child
+        // (parent pointerInput runs in Initial pass, before pager/icon handlers).
+        val gestureModifier = homeScreenGestureModifier(
+            settings = state.settings,
+            context = context,
+            onOpenDrawer = onOpenDrawer,
+        )
+
+        Box(modifier = modifier.fillMaxSize().then(gestureModifier)) {
 
             // ── Pages ─────────────────────────────────────────────────────
             HorizontalPager(
@@ -178,6 +197,14 @@ fun HomeScreen(
             onDismiss = { renameTarget = null },
         )
     }
+
+    // ── Widget picker sheet ───────────────────────────────────────────────
+    if (showWidgetPicker) {
+        com.onyxlauncher.ui.widget.WidgetPickerSheet(
+            viewModel = viewModel,
+            onDismiss = { showWidgetPicker = false },
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,15 +226,46 @@ private fun HomePageGrid(
     modifier: Modifier = Modifier,
 ) {
     val placed = remember(items) { items.associateBy { it.gridX to it.gridY } }
+    val showWidgetPicker = LocalShowWidgetPicker.current
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
 
     BoxWithConstraints(modifier = modifier) {
         val cellW = maxWidth / columns
         val cellH = maxHeight / rows
+        val cellWPx = with(density) { cellW.toPx() }
+        val cellHPx = with(density) { cellH.toPx() }
+
+        // Long-press on empty grid cell → widget picker
+        // Must live inside BoxWithConstraints so it can compute grid coords from px.
+        val backgroundModifier = Modifier.pointerInput(placed, cellWPx, cellHPx) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                // Convert touch to grid cell using local (BoxWithConstraints-relative) coords
+                val col = (down.position.x / cellWPx).toInt().coerceIn(0, columns - 1)
+                val row = (down.position.y / cellHPx).toInt().coerceIn(0, rows - 1)
+                val onOccupiedCell = placed.containsKey(col to row)
+                if (!onOccupiedCell) {
+                    val earlyExit = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val c = ev.changes.firstOrNull() ?: return@withTimeoutOrNull
+                            if (c.changedToUp()) return@withTimeoutOrNull
+                        }
+                    }
+                    if (earlyExit == null) {          // null = timeout = long-press confirmed
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showWidgetPicker()
+                    }
+                }
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().then(backgroundModifier)) { /* gesture capture layer */ }
 
         // Register all cells for drop-target detection
         repeat(columns) { col ->
             repeat(rows) { row ->
-                val density = LocalDensity.current
                 Box(
                     modifier = Modifier
                         .offset(x = cellW * col, y = cellH * row)
@@ -404,15 +462,26 @@ private fun HomeItemCell(
             }
         }
         is HomeItem.WidgetRef -> {
-            // Widget host rendering deferred to Phase 3
-            Box(
-                modifier = pointerModifier
-                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                    .size(64.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("Widget", color = Color.White.copy(alpha = 0.4f))
+            val widgetHost = LocalWidgetHost.current
+            val appWidgetManager = remember { AppWidgetManager.getInstance(context) }
+            val widgetInfo = remember(item.appWidgetId) {
+                runCatching { appWidgetManager.getAppWidgetInfo(item.appWidgetId) }.getOrNull()
             }
+            // Cell dimensions from parent BoxWithConstraints are not accessible here;
+            // use a fixed per-span size approximation — the outer Box already sizes to cellW×cellH
+            WidgetView(
+                appWidgetId = item.appWidgetId,
+                widgetHost = widgetHost,
+                widgetInfo = widgetInfo,
+                spanX = item.spanX,
+                spanY = item.spanY,
+                isEditMode = false,
+                item = item,
+                onResize = { newSpanX, newSpanY ->
+                    viewModel.resizeWidget(item, newSpanX, newSpanY)
+                },
+                modifier = pointerModifier.fillMaxSize(),
+            )
         }
     }
 }
