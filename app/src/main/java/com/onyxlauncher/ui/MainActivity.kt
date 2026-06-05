@@ -13,12 +13,12 @@ import com.onyxlauncher.ui.drawer.DrawerScreen
 import com.onyxlauncher.ui.drawer.DrawerViewModel
 import com.onyxlauncher.ui.home.HomeScreen
 import com.onyxlauncher.ui.home.HomeViewModel
-import androidx.compose.foundation.background
+import com.onyxlauncher.ui.theme.OnyxTheme
+import com.onyxlauncher.domain.model.Settings
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
-import com.onyxlauncher.domain.model.Settings
-import com.onyxlauncher.ui.theme.OnyxTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -34,6 +34,8 @@ class MainActivity : ComponentActivity() {
             this,
             HomeViewModel.Factory(
                 homeItemDao = app.database.homeItemDao(),
+                folderDao = app.database.folderDao(),
+                appOverrideDao = app.database.appOverrideDao(),
                 packageMonitor = app.packageMonitor,
                 settingsRepository = app.settingsRepository,
             ),
@@ -49,15 +51,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settings by app.settingsRepository.settings.collectAsState(initial = Settings())
-
-            OnyxTheme(
-                themeMode = settings.themeMode,
-                useDynamicColor = settings.useDynamicColor,
-            ) {
-                LauncherRoot(
-                    homeViewModel = homeViewModel,
-                    drawerViewModel = drawerViewModel,
-                )
+            OnyxTheme(themeMode = settings.themeMode, useDynamicColor = settings.useDynamicColor) {
+                LauncherRoot(homeViewModel = homeViewModel, drawerViewModel = drawerViewModel)
             }
         }
     }

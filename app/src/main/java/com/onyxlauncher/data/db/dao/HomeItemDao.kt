@@ -30,6 +30,12 @@ interface HomeItemDao {
     @Query("SELECT MAX(page) FROM home_items WHERE page >= 0")
     suspend fun maxPage(): Int?
 
+    @Query("SELECT * FROM home_items WHERE page = :page AND grid_x = :col AND grid_y = :row LIMIT 1")
+    suspend fun getAt(page: Int, col: Int, row: Int): HomeItemEntity?
+
+    @Query("SELECT * FROM home_items WHERE page = -1 AND grid_x = :slot LIMIT 1")
+    suspend fun getDockAt(slot: Int): HomeItemEntity?
+
     @Transaction
     suspend fun move(item: HomeItemEntity, newPage: Int, newX: Int, newY: Int) {
         update(item.copy(page = newPage, gridX = newX, gridY = newY))
