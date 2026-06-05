@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Onyx Launcher</string>
+    <string name="live_wallpaper_label">Onyx Live Wallpaper</string>
+    <string name="live_wallpaper_description">Procedurally generated abstract wallpaper that evolves with the time of day.</string>
+</resources>

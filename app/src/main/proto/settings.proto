@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option java_package = "com.onyxlauncher.data.datastore";
+option java_multiple_files = true;
+
+message SettingsProto {
+  // Grid / layout
+  int32 home_columns = 1;
+  int32 home_rows = 2;
+  int32 dock_slots = 3;
+  int32 icon_size_dp = 4;
+  bool show_labels = 5;
+  int32 label_size_sp = 6;
+  int32 page_indicator = 7;   // PageIndicatorStyle ordinal
+  int32 folder_style = 8;     // FolderStyle ordinal
+
+  // Theme
+  int32 theme_mode = 9;       // ThemeMode ordinal
+  bool use_dynamic_color = 10;
+
+  // Icon pack
+  string active_icon_pack = 11;  // empty = system icons
+
+  // Gestures
+  int32 swipe_up = 12;
+  int32 swipe_down = 13;
+  int32 double_tap = 14;
+  int32 two_finger_swipe_up = 15;
+  string gesture_custom_app = 16;
+
+  // Wallpaper
+  bool use_time_of_day_color = 17;
+  bool use_usage_signal = 18;
+  bool auto_refresh = 19;
+  int32 auto_refresh_trigger = 20;
+  int64 active_preset_id = 21;
+
+  // Misc
+  float animation_scale = 22;
+  bool show_status_bar = 23;
+  bool show_search_on_home = 24;
+}
