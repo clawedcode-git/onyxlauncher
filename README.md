@@ -19,8 +19,8 @@ Requires Android Studio Ladybug (2024.2+) or the Android Gradle Plugin 8.5+.
 
 ## Phases
 - [x] **Phase 1** — Scaffold: project, theme, launcher plumbing, home + dock + drawer
-- [ ] **Phase 2** — Home editing: drag-and-drop, pages, folders, shortcuts, Room persistence
-- [ ] **Phase 3** — Widgets + gestures
+- [x] **Phase 2** — Home editing: drag-and-drop, pages, folders, long-press context menu + app shortcuts, Room persistence
+- [x] **Phase 3** — Widgets (AppWidgetHost, picker, place, resize) + gesture layer (swipe-up/down/double-tap/two-finger, all configurable)
 - [ ] **Phase 4** — Icon pack support
 - [ ] **Phase 5** — Wallpaper generator (engine + live wallpaper service)
 - [ ] **Phase 6** — Settings, theming, backup/restore, performance pass
