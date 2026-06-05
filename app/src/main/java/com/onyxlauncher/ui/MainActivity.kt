@@ -13,12 +13,12 @@ import com.onyxlauncher.ui.drawer.DrawerScreen
 import com.onyxlauncher.ui.drawer.DrawerViewModel
 import com.onyxlauncher.ui.home.HomeScreen
 import com.onyxlauncher.ui.home.HomeViewModel
-import com.onyxlauncher.ui.theme.OnyxTheme
-import com.onyxlauncher.domain.model.Settings
+import androidx.compose.foundation.background
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.background
+import com.onyxlauncher.domain.model.Settings
+import com.onyxlauncher.ui.theme.OnyxTheme
 
 class MainActivity : ComponentActivity() {
 

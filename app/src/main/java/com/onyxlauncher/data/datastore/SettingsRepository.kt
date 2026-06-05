@@ -3,7 +3,12 @@ package com.onyxlauncher.data.datastore
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
-import com.onyxlauncher.domain.model.*
+import com.onyxlauncher.domain.model.GestureAction
+import com.onyxlauncher.domain.model.FolderStyle
+import com.onyxlauncher.domain.model.PageIndicatorStyle
+import com.onyxlauncher.domain.model.RefreshTrigger
+import com.onyxlauncher.domain.model.Settings
+import com.onyxlauncher.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

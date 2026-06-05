@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base theme — Compose handles all colors; we just need the window to be transparent. -->
-    <style name="Theme.OnyxLauncher" parent="android:Theme.Material.NoTitleBar.Fullscreen">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsTranslucent">false</item>
+    <style name="Theme.OnyxLauncher" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/launcher_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

@@ -26,6 +26,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.onyxlauncher.domain.model.App
 import com.onyxlauncher.ui.component.AppIcon
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 
 @Composable
 fun DrawerScreen(
@@ -46,15 +48,33 @@ fun DrawerScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)),
+                .background(Color(0xF0101013)),  // near-opaque deep black, clearly distinct
         ) {
-            Column(Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+            ) {
+                // Drag handle
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 8.dp, bottom = 4.dp)
+                        .size(width = 36.dp, height = 4.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(2.dp),
+                        )
+                        .clickable { onDismiss() },
+                )
+
                 SearchBar(
                     query = query,
                     onQueryChange = viewModel::setQuery,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
 
                 AppGrid(
@@ -90,10 +110,16 @@ private fun SearchBar(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedBorderColor = Color.Transparent,
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            unfocusedContainerColor = Color.White.copy(alpha = 0.10f),
+            focusedContainerColor = Color.White.copy(alpha = 0.14f),
+            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+            focusedBorderColor = Color.White.copy(alpha = 0.5f),
+            unfocusedTextColor = Color.White,
+            focusedTextColor = Color.White,
+            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+            focusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+            unfocusedLeadingIconColor = Color.White.copy(alpha = 0.5f),
+            focusedLeadingIconColor = Color.White,
         ),
     )
 }

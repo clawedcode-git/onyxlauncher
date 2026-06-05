@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 option java_package = "com.onyxlauncher.data.datastore";
+option java_outer_classname = "SettingsProtoFile";
 option java_multiple_files = true;
 
 message SettingsProto {

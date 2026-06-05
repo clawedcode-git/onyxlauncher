@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace = "com.onyxlauncher"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.onyxlauncher"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
 
@@ -117,6 +117,7 @@ dependencies {
 
     // Tests
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso)
     androidTestImplementation(platform(libs.compose.bom))
