@@ -1,16 +1,14 @@
 package com.onyxlauncher.ui.home
 
-import android.content.pm.LauncherApps
-import android.os.UserManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,16 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -43,6 +41,7 @@ import com.onyxlauncher.ui.component.PageIndicator
 import com.onyxlauncher.ui.folder.FolderIcon
 import com.onyxlauncher.ui.folder.FolderSheet
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,58 +274,100 @@ private fun HomeItemCell(
 
     var globalPos by remember { mutableStateOf(Offset.Zero) }
 
+    // ── Single unified gesture handler ───────────────────────────────────────
+    // Three cases, one pointerInput block — no competing detectors:
+    //   tap   (finger up before long-press timeout, < touch slop)  → launch
+    //   long-press + no drag  (timeout, then up without movement)  → context menu
+    //   long-press + drag     (timeout, then move > slop)          → drag-and-drop
     val pointerModifier = Modifier
         .onGloballyPositioned { coords ->
             globalPos = coords.boundsInRoot().topLeft
         }
         .pointerInput(item.id) {
-            detectDragGesturesAfterLongPress(
-                onDragStart = { localOffset ->
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    dragState.startDrag(
-                        item = item,
-                        app = when (item) {
-                            is HomeItem.Shortcut -> apps.find { it.componentName == item.componentName }
-                            else -> null
-                        },
-                        absX = globalPos.x + localOffset.x,
-                        absY = globalPos.y + localOffset.y,
-                        iconPx = with(density) { iconSizeDp.dp.toPx() },
-                    )
-                },
-                onDrag = { change, dragAmount ->
-                    change.consume()
-                    dragState.updatePosition(dragAmount.x, dragAmount.y)
-                },
-                onDragEnd = {
-                    if (!dragState.movedSignificantly && item is HomeItem.Shortcut) {
-                        val app = apps.find { it.componentName == item.componentName }
-                        if (app != null) viewModel.showContextMenu(item, app, context)
-                        dragState.endDrag()
-                    } else {
-                        viewModel.onDrop(dragState, item.page)
-                        dragState.endDrag()
-                    }
-                },
-                onDragCancel = { dragState.endDrag() },
-            )
-        }
-        .pointerInput(item.id) {
-            detectTapGestures(
-                onTap = {
-                    when (item) {
-                        is HomeItem.Shortcut -> {
-                            val app = apps.find { it.componentName == item.componentName } ?: return@detectTapGestures
-                            val launcherApps = context.getSystemService(LauncherApps::class.java)!!
-                            val userManager = context.getSystemService(UserManager::class.java)!!
-                            val uh = userManager.getUserForSerialNumber(app.userSerial) ?: return@detectTapGestures
-                            launcherApps.startMainActivity(app.componentName, uh, null, null)
+            val longPressMs  = viewConfiguration.longPressTimeoutMillis
+            val touchSlopPx  = viewConfiguration.touchSlop
+
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                var fingerUp = false
+                var movedTooFar = false
+
+                // ── Phase 1: wait for long-press timeout ─────────────────
+                // withTimeoutOrNull returns:
+                //   null  = timeout fired  = long press  (finger still down)
+                //   Unit  = block returned = tap or move cancelled the wait
+                val earlyExit = withTimeoutOrNull(longPressMs) {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val c = event.changes.firstOrNull() ?: return@withTimeoutOrNull
+                        if (c.changedToUp()) { fingerUp = true; return@withTimeoutOrNull }
+                        val dx = c.position.x - down.position.x
+                        val dy = c.position.y - down.position.y
+                        if (abs(dx) + abs(dy) > touchSlopPx) {
+                            movedTooFar = true; return@withTimeoutOrNull
                         }
-                        is HomeItem.FolderRef -> viewModel.openFolder(item.folderId)
-                        else -> {}
                     }
-                },
-            )
+                }
+
+                when {
+                    // ── Tap: lifted before long-press ────────────────────
+                    fingerUp -> {
+                        when (item) {
+                            is HomeItem.Shortcut -> {
+                                val app = apps.find { it.componentName == item.componentName }
+                                if (app != null) {
+                                    val la = context.getSystemService(android.content.pm.LauncherApps::class.java)!!
+                                    val um = context.getSystemService(android.os.UserManager::class.java)!!
+                                    val uh = um.getUserForSerialNumber(app.userSerial)
+                                    if (uh != null) la.startMainActivity(app.componentName, uh, null, null)
+                                }
+                            }
+                            is HomeItem.FolderRef -> viewModel.openFolder(item.folderId)
+                            else -> {}
+                        }
+                    }
+
+                    // ── Moved too far too quickly: let pager handle it ───
+                    movedTooFar -> { /* no-op */ }
+
+                    // ── Long-press confirmed (earlyExit == null) ─────────
+                    earlyExit == null -> {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        dragState.startDrag(
+                            item = item,
+                            app = when (item) {
+                                is HomeItem.Shortcut -> apps.find { it.componentName == item.componentName }
+                                else -> null
+                            },
+                            absX = globalPos.x + down.position.x,
+                            absY = globalPos.y + down.position.y,
+                            iconPx = with(density) { iconSizeDp.dp.toPx() },
+                        )
+
+                        // ── Phase 2: track drag until lift ───────────────
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val c = event.changes.firstOrNull() ?: break
+                            if (c.changedToUp()) {
+                                if (dragState.movedSignificantly) {
+                                    viewModel.onDrop(dragState, item.page)
+                                } else {
+                                    // Long-press without drag → context menu
+                                    if (item is HomeItem.Shortcut) {
+                                        val app = apps.find { it.componentName == item.componentName }
+                                        if (app != null) viewModel.showContextMenu(item, app, context)
+                                    }
+                                }
+                                dragState.endDrag()
+                                break
+                            }
+                            val delta = c.positionChange()
+                            dragState.updatePosition(delta.x, delta.y)
+                            c.consume()
+                        }
+                    }
+                }
+            }
         }
 
     when (item) {
