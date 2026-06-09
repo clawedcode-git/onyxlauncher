@@ -20,6 +20,7 @@ import com.onyxlauncher.data.db.dao.AppOverrideDao
 import com.onyxlauncher.data.db.dao.FolderDao
 import com.onyxlauncher.data.db.dao.HomeItemDao
 import com.onyxlauncher.data.db.entity.AppOverrideEntity
+import com.onyxlauncher.data.iconpack.IconPackRepository
 import com.onyxlauncher.data.widget.OnyxWidgetHost
 import com.onyxlauncher.domain.model.*
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,8 @@ class HomeViewModel(
     private val folderDao: FolderDao,
     private val appOverrideDao: AppOverrideDao,
     packageMonitor: PackageMonitor,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
+    private val iconPackRepository: IconPackRepository,
 ) : ViewModel() {
 
     // ── home state ───────────────────────────────────────────────────────────
@@ -355,13 +357,86 @@ class HomeViewModel(
 
     fun renameApp(app: App, newLabel: String) {
         viewModelScope.launch {
-            appOverrideDao.upsert(
-                AppOverrideEntity(
-                    componentName = app.componentName.flattenToString(),
-                    userSerial = app.userSerial,
-                    customLabel = newLabel.ifBlank { null },
-                )
-            )
+            upsertOverride(app) { it.copy(customLabel = newLabel.ifBlank { null }) }
+        }
+    }
+
+    /**
+     * Read-modify-write an app override so independent fields (label, icon, hidden)
+     * never clobber one another. Deletes the row when everything is cleared.
+     */
+    private suspend fun upsertOverride(
+        app: App,
+        transform: (AppOverrideEntity) -> AppOverrideEntity,
+    ) {
+        val flat = app.componentName.flattenToString()
+        val existing = appOverrideDao.get(flat, app.userSerial)
+            ?: AppOverrideEntity(componentName = flat, userSerial = app.userSerial)
+        val updated = transform(existing)
+        if (!updated.isHidden && updated.customLabel == null && updated.customIconKey == null) {
+            appOverrideDao.delete(flat, app.userSerial)
+        } else {
+            appOverrideDao.upsert(updated)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Icon pack
+    // ─────────────────────────────────────────────────────────────────────────
+    private val _iconPackPicker = MutableStateFlow<List<com.onyxlauncher.domain.model.IconPack>?>(null)
+    /** Non-null while the icon-pack picker sheet is shown. */
+    val iconPackPicker: StateFlow<List<com.onyxlauncher.domain.model.IconPack>?> = _iconPackPicker.asStateFlow()
+
+    /** App whose per-icon override chooser is open, or null. */
+    private val _iconChooser = MutableStateFlow<App?>(null)
+    val iconChooser: StateFlow<App?> = _iconChooser.asStateFlow()
+
+    fun openIconPackPicker() {
+        viewModelScope.launch {
+            val packs = withContext(Dispatchers.IO) { iconPackRepository.getInstalledPacks() }
+            _iconPackPicker.value = packs
+        }
+    }
+
+    fun closeIconPackPicker() { _iconPackPicker.value = null }
+
+    /** Switch the active icon pack live (null = reset to system icons). */
+    fun setActiveIconPack(packPackage: String?) {
+        viewModelScope.launch {
+            iconPackRepository.invalidate()
+            settingsRepository.update { activeIconPack = packPackage ?: "" }
+            _iconPackPicker.value = null
+        }
+    }
+
+    fun openIconChooser(app: App) {
+        viewModelScope.launch {
+            // Refresh the installed-pack list for the chooser too.
+            if (_iconPackPicker.value == null) {
+                _iconPackPicker.value = withContext(Dispatchers.IO) { iconPackRepository.getInstalledPacks() }
+            }
+            _iconChooser.value = app
+        }
+    }
+    fun closeIconChooser() { _iconChooser.value = null }
+
+    /**
+     * Per-icon override: render [app]'s icon through [packPackage] (themed or
+     * normalised), independent of the globally active pack.
+     * Stored as customIconKey = "pack:<packPackage>".
+     */
+    fun setAppIconOverride(app: App, packPackage: String) {
+        viewModelScope.launch {
+            upsertOverride(app) { it.copy(customIconKey = "pack:$packPackage") }
+            _iconChooser.value = null
+        }
+    }
+
+    /** Clear a per-icon override, reverting to the active pack / system icon. */
+    fun resetAppIcon(app: App) {
+        viewModelScope.launch {
+            upsertOverride(app) { it.copy(customIconKey = null) }
+            _iconChooser.value = null
         }
     }
 
@@ -372,9 +447,13 @@ class HomeViewModel(
         private val appOverrideDao: AppOverrideDao,
         private val packageMonitor: PackageMonitor,
         private val settingsRepository: SettingsRepository,
+        private val iconPackRepository: IconPackRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(homeItemDao, folderDao, appOverrideDao, packageMonitor, settingsRepository) as T
+            HomeViewModel(
+                homeItemDao, folderDao, appOverrideDao,
+                packageMonitor, settingsRepository, iconPackRepository,
+            ) as T
     }
 }

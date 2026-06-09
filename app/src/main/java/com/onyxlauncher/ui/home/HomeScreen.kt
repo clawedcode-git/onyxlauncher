@@ -14,6 +14,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +64,8 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     val contextMenuState by viewModel.contextMenu.collectAsState()
     val folderSheetState by viewModel.folderSheet.collectAsState()
+    val iconPackList by viewModel.iconPackPicker.collectAsState()
+    val iconChooserApp by viewModel.iconChooser.collectAsState()
     val dragState = remember { DragAndDropState() }
     val pagerState = rememberPagerState(pageCount = { state.pageCount })
     val scope = rememberCoroutineScope()
@@ -69,12 +73,13 @@ fun HomeScreen(
     val widgetHost = (context.applicationContext as android.app.Application).onyxApp.widgetHost
 
     var renameTarget by remember { mutableStateOf<App?>(null) }
+    var showHomeOptions by remember { mutableStateOf(false) }
     var showWidgetPicker by remember { mutableStateOf(false) }
 
     CompositionLocalProvider(
         LocalDragAndDrop provides dragState,
         LocalWidgetHost provides widgetHost,
-        LocalShowWidgetPicker provides { showWidgetPicker = true },
+        LocalShowWidgetPicker provides { showHomeOptions = true },
     ) {
         // Gesture modifier on the root Box — processes events before any child
         // (parent pointerInput runs in Initial pass, before pager/icon handlers).
@@ -198,12 +203,96 @@ fun HomeScreen(
         )
     }
 
+    // ── Home options sheet (long-press empty space) ───────────────────────
+    if (showHomeOptions) {
+        HomeOptionsSheet(
+            onAddWidget = {
+                showHomeOptions = false
+                showWidgetPicker = true
+            },
+            onChangeIconPack = {
+                showHomeOptions = false
+                viewModel.openIconPackPicker()
+            },
+            onDismiss = { showHomeOptions = false },
+        )
+    }
+
     // ── Widget picker sheet ───────────────────────────────────────────────
     if (showWidgetPicker) {
         com.onyxlauncher.ui.widget.WidgetPickerSheet(
             viewModel = viewModel,
             onDismiss = { showWidgetPicker = false },
         )
+    }
+
+    // ── Icon pack picker sheet ────────────────────────────────────────────
+    iconPackList?.let { packs ->
+        // Only show as the global picker when no per-app chooser is active.
+        if (iconChooserApp == null) {
+            com.onyxlauncher.ui.iconpack.IconPackPickerSheet(
+                packs = packs,
+                activePackage = state.settings.activeIconPack,
+                onSelect = { viewModel.setActiveIconPack(it) },
+                onDismiss = { viewModel.closeIconPackPicker() },
+            )
+        }
+    }
+
+    // ── Per-app icon chooser sheet ────────────────────────────────────────
+    iconChooserApp?.let { app ->
+        com.onyxlauncher.ui.iconpack.IconChooserSheet(
+            app = app,
+            packs = iconPackList ?: emptyList(),
+            onSelectPack = { pkg -> viewModel.setAppIconOverride(app, pkg) },
+            onReset = { viewModel.resetAppIcon(app) },
+            onDismiss = { viewModel.closeIconChooser() },
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Home options bottom sheet (shown on long-press of empty home space)
+// ─────────────────────────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeOptionsSheet(
+    onAddWidget: () -> Unit,
+    onChangeIconPack: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A1A1F),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp),
+        ) {
+            HomeOptionRow("Add widget", Icons.Default.Widgets, onAddWidget)
+            HomeOptionRow("Change icon pack", Icons.Default.Palette, onChangeIconPack)
+        }
+    }
+}
+
+@Composable
+private fun HomeOptionRow(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(20.dp))
+        Text(label, color = Color.White, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

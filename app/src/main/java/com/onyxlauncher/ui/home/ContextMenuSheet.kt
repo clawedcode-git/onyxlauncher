@@ -102,6 +102,14 @@ fun ContextMenuSheet(
                 },
             )
             ShortcutRow(
+                label = "Change icon",
+                icon = Icons.Default.Image,
+                onClick = {
+                    onDismiss()
+                    viewModel.openIconChooser(app)
+                },
+            )
+            ShortcutRow(
                 label = "App info",
                 icon = Icons.Outlined.Info,
                 onClick = {

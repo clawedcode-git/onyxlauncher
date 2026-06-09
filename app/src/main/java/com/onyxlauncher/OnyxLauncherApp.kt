@@ -3,6 +3,7 @@ package com.onyxlauncher
 import android.app.Application
 import com.onyxlauncher.data.datastore.SettingsRepository
 import com.onyxlauncher.data.db.AppDatabase
+import com.onyxlauncher.data.iconpack.IconPackRepository
 import com.onyxlauncher.data.`package`.PackageMonitor
 import com.onyxlauncher.data.widget.OnyxWidgetHost
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,8 @@ class OnyxLauncherApp : Application() {
     }
 
     val settingsRepository by lazy { SettingsRepository(this) }
+
+    val iconPackRepository by lazy { IconPackRepository(this) }
 
     val widgetHost by lazy { OnyxWidgetHost(this) }
 

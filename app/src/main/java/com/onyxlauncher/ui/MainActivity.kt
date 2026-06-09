@@ -19,6 +19,7 @@ import com.onyxlauncher.ui.drawer.DrawerViewModel
 import com.onyxlauncher.ui.home.HomeScreen
 import com.onyxlauncher.ui.home.HomeViewModel
 import com.onyxlauncher.ui.theme.OnyxTheme
+import com.onyxlauncher.ui.component.LocalActiveIconPack
 import com.onyxlauncher.domain.model.Settings
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,6 +78,7 @@ class MainActivity : ComponentActivity() {
                 appOverrideDao = app.database.appOverrideDao(),
                 packageMonitor = app.packageMonitor,
                 settingsRepository = app.settingsRepository,
+                iconPackRepository = app.iconPackRepository,
             ),
         )[HomeViewModel::class.java]
 
@@ -116,7 +118,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by app.settingsRepository.settings.collectAsState(initial = Settings())
             OnyxTheme(themeMode = settings.themeMode, useDynamicColor = settings.useDynamicColor) {
-                LauncherRoot(homeViewModel = homeViewModel, drawerViewModel = drawerViewModel)
+                CompositionLocalProvider(
+                    LocalActiveIconPack provides settings.activeIconPack,
+                ) {
+                    LauncherRoot(homeViewModel = homeViewModel, drawerViewModel = drawerViewModel)
+                }
             }
         }
     }
