@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,6 +60,7 @@ import kotlin.math.roundToInt
 fun HomeScreen(
     viewModel: HomeViewModel,
     onOpenDrawer: () -> Unit,
+    onOpenWallpaper: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsState()
@@ -214,6 +216,10 @@ fun HomeScreen(
                 showHomeOptions = false
                 viewModel.openIconPackPicker()
             },
+            onChangeWallpaper = {
+                showHomeOptions = false
+                onOpenWallpaper()
+            },
             onDismiss = { showHomeOptions = false },
         )
     }
@@ -259,6 +265,7 @@ fun HomeScreen(
 private fun HomeOptionsSheet(
     onAddWidget: () -> Unit,
     onChangeIconPack: () -> Unit,
+    onChangeWallpaper: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -273,6 +280,7 @@ private fun HomeOptionsSheet(
         ) {
             HomeOptionRow("Add widget", Icons.Default.Widgets, onAddWidget)
             HomeOptionRow("Change icon pack", Icons.Default.Palette, onChangeIconPack)
+            HomeOptionRow("Wallpaper", Icons.Default.Wallpaper, onChangeWallpaper)
         }
     }
 }

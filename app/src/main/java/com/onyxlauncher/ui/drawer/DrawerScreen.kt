@@ -40,6 +40,12 @@ fun DrawerScreen(
     val query by viewModel.query.collectAsState()
     val settings by viewModel.settings.collectAsState()
 
+    // Back closes the drawer (the launcher is HOME, so back is otherwise a no-op).
+    androidx.activity.compose.BackHandler(enabled = visible) {
+        viewModel.setQuery("")
+        onDismiss()
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically { it },

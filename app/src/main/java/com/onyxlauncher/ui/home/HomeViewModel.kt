@@ -96,14 +96,51 @@ class HomeViewModel(
     fun placeWidget(appWidgetId: Int, page: Int, col: Int, row: Int, spanX: Int, spanY: Int) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
+                val (freeCol, freeRow) = findFreeCell(page, col, row, spanX, spanY)
                 val item = HomeItem.WidgetRef(
-                    id = 0, page = page, gridX = col, gridY = row,
+                    id = 0, page = page, gridX = freeCol, gridY = freeRow,
                     appWidgetId = appWidgetId,
                     spanX = spanX, spanY = spanY,
                 )
                 homeItemDao.insert(item.toEntity())
             }
         }
+    }
+
+    /**
+     * First grid position on [page] where a [spanX]×[spanY] block doesn't overlap
+     * any existing item. Falls back to the requested cell if the page is full.
+     */
+    private fun findFreeCell(page: Int, wantCol: Int, wantRow: Int, spanX: Int, spanY: Int): Pair<Int, Int> {
+        val s = state.value
+        val cols = s.settings.homeColumns
+        val rows = s.settings.homeRows
+        val items = s.pages[page] ?: emptyList()
+
+        val occupied = Array(rows) { BooleanArray(cols) }
+        for (it in items) {
+            val sx = if (it is HomeItem.WidgetRef) it.spanX else 1
+            val sy = if (it is HomeItem.WidgetRef) it.spanY else 1
+            for (y in it.gridY until (it.gridY + sy).coerceAtMost(rows)) {
+                for (x in it.gridX until (it.gridX + sx).coerceAtMost(cols)) {
+                    if (y >= 0 && x >= 0) occupied[y][x] = true
+                }
+            }
+        }
+
+        fun fits(col: Int, row: Int): Boolean {
+            if (col + spanX > cols || row + spanY > rows) return false
+            for (y in row until row + spanY) for (x in col until col + spanX) {
+                if (occupied[y][x]) return false
+            }
+            return true
+        }
+
+        if (fits(wantCol, wantRow)) return wantCol to wantRow
+        for (row in 0 until rows) for (col in 0 until cols) {
+            if (fits(col, row)) return col to row
+        }
+        return wantCol to wantRow
     }
 
     fun removeWidget(item: HomeItem.WidgetRef, widgetHost: OnyxWidgetHost) {
@@ -118,15 +155,8 @@ class HomeViewModel(
     fun resizeWidget(item: HomeItem.WidgetRef, newSpanX: Int, newSpanY: Int) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                homeItemDao.update(
-                    item.toEntity().copy(
-                        payload = buildString {
-                            append("{\"widgetId\":\"${item.appWidgetId}\"")
-                            append(",\"spanX\":\"$newSpanX\"")
-                            append(",\"spanY\":\"$newSpanY\"}")
-                        }
-                    )
-                )
+                // Round-trip through the mapper so the payload format has one owner.
+                homeItemDao.update(item.copy(spanX = newSpanX, spanY = newSpanY).toEntity())
             }
         }
     }
@@ -240,14 +270,13 @@ class HomeViewModel(
             items = listOf(item1.componentName, item2.componentName),
         )
         val folderId = folderDao.insert(folder.toEntity())
-        // Replace item2's slot with a FolderRef
+        // Replace item2's slot with a FolderRef (same row id, new type/payload).
         homeItemDao.deleteById(item1.id)
         homeItemDao.update(
-            item2.toEntity().copy(
-                type = "folder",
-                payload = """{"folderId":"$folderId"}""",
-                page = page, gridX = col, gridY = row,
-            )
+            HomeItem.FolderRef(
+                id = item2.id, page = page, gridX = col, gridY = row,
+                folderId = folderId,
+            ).toEntity()
         )
     }
 
@@ -271,15 +300,14 @@ class HomeViewModel(
                     .firstOrNull { it is HomeItem.FolderRef && (it as HomeItem.FolderRef).folderId == folderId }
                 if (folderRef != null && newItems.isNotEmpty()) {
                     val lastApp = newItems.first()
+                    // Folders only store ComponentName, so the primary user (serial 0)
+                    // is assumed when dissolving back to a shortcut.
                     homeItemDao.update(
-                        folderRef.toEntity().copy(
-                            type = "shortcut",
-                            payload = buildString {
-                                append("{\"pkg\":\"${lastApp.packageName}\"")
-                                append(",\"cls\":\"${lastApp.className}\"")
-                                append(",\"user\":\"0\"}")
-                            }
-                        )
+                        HomeItem.Shortcut(
+                            id = folderRef.id, page = folderRef.page,
+                            gridX = folderRef.gridX, gridY = folderRef.gridY,
+                            componentName = lastApp, userSerial = 0L,
+                        ).toEntity()
                     )
                 } else if (folderRef != null) {
                     homeItemDao.deleteById(folderRef.id)

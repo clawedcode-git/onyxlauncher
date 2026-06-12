@@ -25,6 +25,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -121,7 +123,12 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalActiveIconPack provides settings.activeIconPack,
                 ) {
-                    LauncherRoot(homeViewModel = homeViewModel, drawerViewModel = drawerViewModel)
+                    LauncherRoot(
+                        homeViewModel = homeViewModel,
+                        drawerViewModel = drawerViewModel,
+                        onRequestUsageAccess = ::openUsageAccessSettings,
+                        onConfigureLiveWallpaper = ::openLiveWallpaperChooser,
+                    )
                 }
             }
         }
@@ -155,18 +162,42 @@ class MainActivity : ComponentActivity() {
             pendingWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
         }
     }
+
+    fun openUsageAccessSettings() {
+        runCatching {
+            startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        }
+    }
+
+    fun openLiveWallpaperChooser() {
+        runCatching {
+            val component = android.content.ComponentName(
+                this, "com.onyxlauncher.wallpaper.service.OnyxWallpaperService",
+            )
+            startActivity(Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                putExtra(android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, component)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        }
+    }
 }
 
 @Composable
 private fun LauncherRoot(
     homeViewModel: HomeViewModel,
     drawerViewModel: DrawerViewModel,
+    onRequestUsageAccess: () -> Unit,
+    onConfigureLiveWallpaper: () -> Unit,
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
+    var generatorOpen by remember { mutableStateOf(false) }
 
     HomeScreen(
         viewModel = homeViewModel,
         onOpenDrawer = { drawerOpen = true },
+        onOpenWallpaper = { generatorOpen = true },
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent),
@@ -178,4 +209,17 @@ private fun LauncherRoot(
         onDismiss = { drawerOpen = false },
         modifier = Modifier.fillMaxSize(),
     )
+
+    if (generatorOpen) {
+        val app = LocalContext.current.applicationContext as android.app.Application
+        val generatorViewModel: com.onyxlauncher.ui.wallpaper.GeneratorViewModel = viewModel(
+            factory = com.onyxlauncher.ui.wallpaper.GeneratorViewModel.Factory(app),
+        )
+        com.onyxlauncher.ui.wallpaper.GeneratorScreen(
+            viewModel = generatorViewModel,
+            onClose = { generatorOpen = false },
+            onRequestUsageAccess = onRequestUsageAccess,
+            onConfigureLiveWallpaper = onConfigureLiveWallpaper,
+        )
+    }
 }
