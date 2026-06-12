@@ -30,6 +30,7 @@ data class Settings(
     val animationScale: Float = 1f,
     val showStatusBar: Boolean = true,
     val showSearchOnHome: Boolean = false,
+    val homeSeeded: Boolean = false,
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM, AMOLED }

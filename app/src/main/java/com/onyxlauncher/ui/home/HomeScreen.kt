@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -549,7 +550,13 @@ private fun HomeItemCell(
                     if (showLabels) {
                         Text(
                             folder.name,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = Color.Black.copy(alpha = 0.85f),
+                                    offset = androidx.compose.ui.geometry.Offset(0f, 1.5f),
+                                    blurRadius = 4f,
+                                ),
+                            ),
                             color = Color.White,
                             maxLines = 1,
                             modifier = Modifier.paddingFromBaseline(top = 4.dp),
@@ -605,9 +612,16 @@ private fun Dock(
         modifier = modifier
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .height(72.dp)
+            // Frosted pill: translucent fill + hairline highlight reads well
+            // over both bright and dark generated wallpapers.
             .background(
-                color = Color.White.copy(alpha = 0.10f),
-                shape = RoundedCornerShape(22.dp),
+                color = Color(0x33101018),
+                shape = RoundedCornerShape(24.dp),
+            )
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(24.dp),
             )
             .clickable(enabled = !dragState.isDragging, onClick = onOpenDrawer),
         contentAlignment = Alignment.Center,

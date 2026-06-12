@@ -40,4 +40,7 @@ message SettingsProto {
   float animation_scale = 22;
   bool show_status_bar = 23;
   bool show_search_on_home = 24;
+
+  // One-time first-run home layout seeding completed
+  bool home_seeded = 25;
 }

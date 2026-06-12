@@ -74,8 +74,16 @@ fun AppIcon(
         if (showLabel) {
             Text(
                 text = app.customLabel ?: app.label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = labelSizeSp.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                // White + drop shadow so labels stay readable over any wallpaper.
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = labelSizeSp.sp,
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f),
+                        offset = androidx.compose.ui.geometry.Offset(0f, 1.5f),
+                        blurRadius = 4f,
+                    ),
+                ),
+                color = androidx.compose.ui.graphics.Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,

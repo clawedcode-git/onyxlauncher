@@ -52,5 +52,6 @@ class SettingsRepository(private val context: Context) {
         animationScale = if (animationScale == 0f) 1f else animationScale,
         showStatusBar = showStatusBar,
         showSearchOnHome = showSearchOnHome,
+        homeSeeded = homeSeeded,
     )
 }
