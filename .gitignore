@@ -32,3 +32,8 @@ gen/
 out/
 release/
 proguard/
+
+# Signing — never commit keystore or credentials
+*.keystore
+*.jks
+keystore.properties
