@@ -30,6 +30,12 @@ interface HomeItemDao {
     @Query("SELECT MAX(page) FROM home_items WHERE page >= 0")
     suspend fun maxPage(): Int?
 
+    @Query("SELECT * FROM home_items")
+    suspend fun getAll(): List<HomeItemEntity>
+
+    @Query("DELETE FROM home_items")
+    suspend fun clear()
+
     @Query("SELECT * FROM home_items WHERE page = :page AND grid_x = :col AND grid_y = :row LIMIT 1")
     suspend fun getAt(page: Int, col: Int, row: Int): HomeItemEntity?
 

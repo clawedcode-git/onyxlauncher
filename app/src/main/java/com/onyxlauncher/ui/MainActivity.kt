@@ -119,6 +119,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settings by app.settingsRepository.settings.collectAsState(initial = Settings())
+
+            // AMOLED wants true black, so hide the show-through wallpaper and paint
+            // the window black; every other theme lets the wallpaper shine through.
+            LaunchedEffect(settings.themeMode) {
+                if (settings.themeMode == com.onyxlauncher.domain.model.ThemeMode.AMOLED) {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK))
+                } else {
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                }
+            }
+
             OnyxTheme(themeMode = settings.themeMode, useDynamicColor = settings.useDynamicColor) {
                 CompositionLocalProvider(
                     LocalActiveIconPack provides settings.activeIconPack,
@@ -193,11 +206,13 @@ private fun LauncherRoot(
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
     var generatorOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
 
     HomeScreen(
         viewModel = homeViewModel,
         onOpenDrawer = { drawerOpen = true },
         onOpenWallpaper = { generatorOpen = true },
+        onOpenSettings = { settingsOpen = true },
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent),
@@ -220,6 +235,17 @@ private fun LauncherRoot(
             onClose = { generatorOpen = false },
             onRequestUsageAccess = onRequestUsageAccess,
             onConfigureLiveWallpaper = onConfigureLiveWallpaper,
+        )
+    }
+
+    if (settingsOpen) {
+        val app = LocalContext.current.applicationContext as android.app.Application
+        val settingsViewModel: com.onyxlauncher.ui.settings.SettingsViewModel = viewModel(
+            factory = com.onyxlauncher.ui.settings.SettingsViewModel.Factory(app),
+        )
+        com.onyxlauncher.ui.settings.SettingsScreen(
+            viewModel = settingsViewModel,
+            onClose = { settingsOpen = false },
         )
     }
 }

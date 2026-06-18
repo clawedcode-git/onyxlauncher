@@ -12,8 +12,17 @@ interface FolderDao {
     @Query("SELECT * FROM folders WHERE id = :id")
     suspend fun getById(id: Long): FolderEntity?
 
+    @Query("SELECT * FROM folders")
+    suspend fun getAll(): List<FolderEntity>
+
+    @Query("DELETE FROM folders")
+    suspend fun clear()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(folder: FolderEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(folders: List<FolderEntity>)
 
     @Update
     suspend fun update(folder: FolderEntity)

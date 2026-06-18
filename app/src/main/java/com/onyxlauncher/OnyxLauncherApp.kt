@@ -2,6 +2,7 @@ package com.onyxlauncher
 
 import android.app.Application
 import com.onyxlauncher.data.HomeSeeder
+import com.onyxlauncher.data.backup.BackupManager
 import com.onyxlauncher.data.datastore.SettingsRepository
 import com.onyxlauncher.data.db.AppDatabase
 import com.onyxlauncher.data.iconpack.IconPackRepository
@@ -37,6 +38,10 @@ class OnyxLauncherApp : Application() {
     }
 
     val wallpaperGenerator by lazy { WallpaperGenerator() }
+
+    val backupManager by lazy {
+        BackupManager(this, database, settingsRepository)
+    }
 
     val widgetHost by lazy { OnyxWidgetHost(this) }
 

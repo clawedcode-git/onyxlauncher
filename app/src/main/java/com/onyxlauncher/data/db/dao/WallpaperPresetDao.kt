@@ -12,8 +12,17 @@ interface WallpaperPresetDao {
     @Query("SELECT * FROM wallpaper_presets WHERE is_favorite = 1 ORDER BY created_at DESC")
     fun observeFavorites(): Flow<List<WallpaperPresetEntity>>
 
+    @Query("SELECT * FROM wallpaper_presets")
+    suspend fun getAll(): List<WallpaperPresetEntity>
+
+    @Query("DELETE FROM wallpaper_presets")
+    suspend fun clear()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(preset: WallpaperPresetEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(presets: List<WallpaperPresetEntity>)
 
     @Update
     suspend fun update(preset: WallpaperPresetEntity)
