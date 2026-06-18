@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "OnyxLauncher"
 include(":app")
+include(":macrobenchmark")

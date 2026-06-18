@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.protobuf)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Load release signing config from keystore.properties (gitignored) if present.
@@ -55,6 +56,17 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+        // Non-minified, profileable build the Macrobenchmark module drives to
+        // measure cold start / drawer scroll and to generate baseline profiles.
+        create("benchmark") {
+            initWith(getByName("release"))
+            isMinifyEnabled = true
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            proguardFiles("benchmark-rules.pro")
         }
     }
 
@@ -142,6 +154,12 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+
+    // Installs the baseline profile shipped in the APK at first run
+    implementation(libs.profileinstaller)
+
+    // Generated baseline profile (produced by the :macrobenchmark module)
+    baselineProfile(project(":macrobenchmark"))
 
     // Debug
     debugImplementation(libs.compose.ui.tooling)

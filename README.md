@@ -23,7 +23,21 @@ Requires Android Studio Ladybug (2024.2+) or the Android Gradle Plugin 8.5+.
 - [x] **Phase 3** — Widgets (AppWidgetHost, picker, place, resize) + gesture layer (swipe-up/down/double-tap/two-finger, all configurable)
 - [x] **Phase 4** — Icon pack support (Nova/ADW appfilter parser, live pack switching, per-icon override, themed-icon LRU cache)
 - [x] **Phase 5** — Wallpaper generator (seeded simplex engine, 3 abstract styles, time-of-day palettes, usage-driven parameters, live wallpaper service)
-- [ ] **Phase 6** — Settings, theming, backup/restore, performance pass
+- [x] **Phase 6** — In-app Settings, theming (Light/Dark/System/AMOLED), JSON backup/restore, performance pass (R8 shrink → 1.6 MB, baseline profile, Macrobenchmark module)
+
+## Releases
+- [v0.1.0-alpha](https://github.com/clawedcode-git/onyxlauncher/releases/tag/v0.1.0-alpha) — first alpha
+
+## Performance
+- **APK size:** ~1.6 MB (R8 + resource shrink; debug is ~18 MB)
+- **Baseline profile:** seed profile ships in the APK and is installed at first run by `ProfileInstaller`. Regenerate the measured profile on real hardware:
+  ```
+  ./gradlew :app:generateBaselineProfile
+  ```
+- **Macrobenchmark** (`:macrobenchmark` module) — cold start + drawer-scroll frame timing:
+  ```
+  ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest
+  ```
 
 ## minSdk
 26 (Android 8.0) — required for adaptive icons and shortcuts API.

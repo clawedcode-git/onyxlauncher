@@ -1,0 +1,35 @@
+# Seed baseline profile — cold-start + first-frame hot path for Onyx Launcher.
+#
+# This is a hand-curated seed so a fresh install gets some AOT compilation of the
+# launcher's startup classes. Regenerate the full, measured profile on real
+# hardware with:  ./gradlew :app:generateBaselineProfile
+# (that overwrites this with the captured profile via the baselineprofile plugin).
+
+# ── Application / Activity startup ──────────────────────────────────────────
+HSPLcom/onyxlauncher/OnyxLauncherApp;->onCreate()V
+HSPLcom/onyxlauncher/OnyxLauncherApp;->getDatabase()Lcom/onyxlauncher/data/db/AppDatabase;
+HSPLcom/onyxlauncher/OnyxLauncherApp;->getSettingsRepository()Lcom/onyxlauncher/data/datastore/SettingsRepository;
+HSPLcom/onyxlauncher/OnyxLauncherApp;->getPackageMonitor()Lcom/onyxlauncher/data/package/PackageMonitor;
+HSPLcom/onyxlauncher/ui/MainActivity;-><init>()V
+HSPLcom/onyxlauncher/ui/MainActivity;->onCreate(Landroid/os/Bundle;)V
+
+# ── Package monitor (drives the first app list) ─────────────────────────────
+HSPLcom/onyxlauncher/data/package/PackageMonitor;-><init>(Landroid/content/Context;Lcom/onyxlauncher/data/db/dao/AppOverrideDao;Lkotlinx/coroutines/CoroutineScope;)V
+HSPLcom/onyxlauncher/domain/model/App;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JZLjava/lang/String;Ljava/lang/String;)V
+HSPLcom/onyxlauncher/domain/model/App;->getKey()Ljava/lang/String;
+HSPLcom/onyxlauncher/domain/model/App;->getComponentName()Landroid/content/ComponentName;
+
+# ── Layout persistence (first home render) ──────────────────────────────────
+HSPLcom/onyxlauncher/data/db/HomeItemMapper;->toDomain(Lcom/onyxlauncher/data/db/entity/HomeItemEntity;)Lcom/onyxlauncher/domain/model/HomeItem;
+HSPLcom/onyxlauncher/data/db/dao/HomeItemDao;->observeAll()Lkotlinx/coroutines/flow/Flow;
+HSPLcom/onyxlauncher/domain/model/Settings;-><init>()V
+
+# ── Home + drawer composables (first frame + drawer open) ───────────────────
+HSPLcom/onyxlauncher/ui/home/HomeScreenKt;->HomeScreen(Lcom/onyxlauncher/ui/home/HomeViewModel;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/onyxlauncher/ui/home/HomeViewModel;->getState()Lkotlinx/coroutines/flow/StateFlow;
+HSPLcom/onyxlauncher/ui/drawer/DrawerScreenKt;->DrawerScreen(Lcom/onyxlauncher/ui/drawer/DrawerViewModel;ZLkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/onyxlauncher/ui/drawer/DrawerViewModel;->getApps()Lkotlinx/coroutines/flow/StateFlow;
+HSPLcom/onyxlauncher/ui/component/AppIconKt;->AppIcon(Lcom/onyxlauncher/domain/model/App;FZILandroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+
+# ── Theme ────────────────────────────────────────────────────────────────────
+HSPLcom/onyxlauncher/ui/theme/ThemeKt;->OnyxTheme(Lcom/onyxlauncher/domain/model/ThemeMode;ZLkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
